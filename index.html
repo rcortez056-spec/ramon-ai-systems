@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agentic AI Workflow — Ramon Cortez</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:         #070b14;
+    --surface:    #0d1626;
+    --border:     #1a2d4a;
+    --dim:        #3a5880;
+    --text:       #c8ddf0;
+    --bright:     #eaf4ff;
+    --mint:       #00e5a0;
+    --planner:    #818cf8;
+    --tools:      #fbbf24;
+    --memory:     #f472b6;
+    --output:     #34d399;
+    --agent:      #00e5a0;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100%;
+  }
+
+  /* subtle star field */
+  body::before{
+    content:'';
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      radial-gradient(1px 1px at 12% 8%,  rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 78% 15%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1px 1px at 35% 42%, rgba(255,255,255,0.15) 0%, transparent 100%),
+      radial-gradient(1px 1px at 91% 65%, rgba(255,255,255,0.20) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 88%, rgba(255,255,255,0.12) 0%, transparent 100%),
+      radial-gradient(1px 1px at 6%  75%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 66% 52%, rgba(0,229,160,0.18) 0%, transparent 100%);
+  }
+
+  .shell{
+    position:relative; z-index:1;
+    max-width:860px; margin:0 auto;
+    padding:28px 18px 36px;
+    display:flex; flex-direction:column; gap:28px;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{ display:flex; flex-direction:column; gap:10px; }
+
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:9px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--mint);
+  }
+  .pulse-ring{
+    width:10px; height:10px; border-radius:50%;
+    border:2px solid var(--mint);
+    animation:ring-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes ring-pulse{
+    0%,100%{ transform:scale(1); opacity:1; box-shadow:0 0 0 0 rgba(0,229,160,0.5); }
+    50%{ transform:scale(1.3); opacity:0.7; box-shadow:0 0 0 5px rgba(0,229,160,0); }
+  }
+
+  h1{
+    font-size:clamp(26px,5vw,42px);
+    font-weight:700;
+    letter-spacing:-0.025em;
+    color:var(--bright);
+    line-height:1.1;
+  }
+  h1 em{
+    font-style:normal;
+    background:linear-gradient(90deg, var(--mint), var(--planner));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+
+  .deck{
+    font-size:14px; line-height:1.65; color:var(--dim); max-width:52ch;
+    font-weight:400;
+  }
+
+  /* ---------- TASK PILL ---------- */
+  .task-bar{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border);
+    padding:14px 18px; border-radius:6px;
+  }
+  .task-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--dim);
+  }
+  #task-text{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; font-weight:500; color:var(--bright);
+    flex:1; min-width:160px;
+    transition:opacity 0.3s ease;
+  }
+  .iteration-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; color:var(--mint); letter-spacing:0.1em;
+    border:1px solid rgba(0,229,160,0.3);
+    padding:3px 10px; border-radius:20px;
+    white-space:nowrap;
+  }
+
+  /* ---------- ORBITAL CANVAS ---------- */
+  .canvas-wrap{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:6px; overflow:hidden;
+    padding:10px 0;
+  }
+
+  svg.orbit{ display:block; width:100%; height:auto; }
+
+  /* orbit ring */
+  .orbit-ring{
+    fill:none; stroke:var(--border); stroke-width:1;
+    stroke-dasharray:4 8;
+  }
+
+  /* satellite cards */
+  .sat-bg{
+    fill:var(--surface); stroke-width:1.5;
+    filter:drop-shadow(0 0 0px transparent);
+    transition:filter 0.3s ease, stroke 0.3s ease;
+  }
+  .sat-bg.planner{ stroke:var(--planner); }
+  .sat-bg.tools{   stroke:var(--tools);   }
+  .sat-bg.memory{  stroke:var(--memory);  }
+  .sat-bg.output{  stroke:var(--output);  }
+
+  .sat-bg.active.planner{ filter:drop-shadow(0 0 10px rgba(129,140,248,0.7)); }
+  .sat-bg.active.tools{   filter:drop-shadow(0 0 10px rgba(251,191,36,0.7));  }
+  .sat-bg.active.memory{  filter:drop-shadow(0 0 10px rgba(244,114,182,0.7)); }
+  .sat-bg.active.output{  filter:drop-shadow(0 0 10px rgba(52,211,153,0.7));  }
+
+  .sat-icon{ font-size:20px; dominant-baseline:central; text-anchor:middle; }
+  .sat-name{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:11px; font-weight:700;
+    fill:var(--bright); text-anchor:middle; dominant-baseline:central;
+    letter-spacing:0.06em; text-transform:uppercase;
+  }
+  .sat-role{
+    font-family:'JetBrains Mono', monospace;
+    font-size:8.5px; fill:var(--dim);
+    text-anchor:middle; dominant-baseline:central;
+    letter-spacing:0.04em;
+  }
+
+  /* agent center */
+  .agent-outer{ fill:none; stroke:rgba(0,229,160,0.15); stroke-width:1; }
+  .agent-mid{   fill:none; stroke:rgba(0,229,160,0.3);  stroke-width:1.5; }
+  .agent-core{  fill:#0d1f1a; stroke:var(--mint); stroke-width:2; }
+  .agent-label{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:11px; font-weight:700; letter-spacing:0.12em;
+    fill:var(--mint); text-anchor:middle; dominant-baseline:central;
+  }
+  .agent-sub{
+    font-family:'JetBrains Mono', monospace;
+    font-size:8px; fill:rgba(0,229,160,0.6);
+    text-anchor:middle; dominant-baseline:central;
+    letter-spacing:0.06em;
+  }
+
+  /* signal arcs */
+  .arc-base{
+    fill:none; stroke:var(--border); stroke-width:1;
+  }
+  .arc-signal{
+    fill:none; stroke-width:2.5; stroke-linecap:round;
+    opacity:0;
+  }
+  .arc-signal.planner{ stroke:var(--planner); filter:drop-shadow(0 0 4px var(--planner)); }
+  .arc-signal.tools{   stroke:var(--tools);   filter:drop-shadow(0 0 4px var(--tools));   }
+  .arc-signal.memory{  stroke:var(--memory);  filter:drop-shadow(0 0 4px var(--memory));  }
+  .arc-signal.output{  stroke:var(--output);  filter:drop-shadow(0 0 4px var(--output));  }
+
+  /* rotating outer halo on agent */
+  .halo{
+    fill:none; stroke:var(--mint); stroke-width:1;
+    stroke-dasharray:6 18; opacity:0.35;
+    transform-origin:50% 50%;
+    animation:spin 8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- REASONING FEED ---------- */
+  .feed-wrap{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:6px; overflow:hidden;
+  }
+  .feed-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .feed-title{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--dim);
+  }
+  #feed-phase{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; color:var(--mint);
+    letter-spacing:0.1em;
+  }
+  .feed-body{ padding:0; max-height:190px; overflow-y:auto; }
+  .feed-row{
+    display:flex; align-items:flex-start; gap:12px;
+    padding:10px 16px; border-bottom:1px solid rgba(26,45,74,0.6);
+    animation:fadeUp 0.4s ease;
+  }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .feed-dot{
+    width:7px; height:7px; border-radius:50%;
+    flex-shrink:0; margin-top:4px;
+  }
+  .feed-dot.planner{ background:var(--planner); box-shadow:0 0 6px var(--planner); }
+  .feed-dot.tools{   background:var(--tools);   box-shadow:0 0 6px var(--tools); }
+  .feed-dot.memory{  background:var(--memory);  box-shadow:0 0 6px var(--memory); }
+  .feed-dot.output{  background:var(--output);  box-shadow:0 0 6px var(--output); }
+  .feed-content{ flex:1; }
+  .feed-node{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px; letter-spacing:0.12em; text-transform:uppercase;
+    margin-bottom:3px;
+  }
+  .feed-node.planner{ color:var(--planner); }
+  .feed-node.tools{   color:var(--tools); }
+  .feed-node.memory{  color:var(--memory); }
+  .feed-node.output{  color:var(--output); }
+  .feed-text{ font-size:12.5px; color:var(--text); line-height:1.5; }
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    padding-top:8px;
+    border-top:1px solid var(--border);
+    font-family:'JetBrains Mono', monospace;
+    font-size:9.5px; color:var(--dim); letter-spacing:0.06em;
+  }
+  footer b{ color:var(--text); font-weight:600; }
+  .live-indicator{ display:flex; align-items:center; gap:6px; color:var(--mint); }
+
+  ::-webkit-scrollbar{ width:6px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:3px; }
+
+  @media(max-width:480px){
+    h1{ font-size:22px; }
+    .deck{ font-size:13px; }
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="eyebrow"><span class="pulse-ring"></span>AI Architect · Live Demo</div>
+    <h1>Agentic <em>AI Workflow</em></h1>
+    <p class="deck">A live agent loop: the Planner breaks the task down, Tools execute each step, Memory stores context across cycles, and Output delivers the result — then the loop starts again.</p>
+  </header>
+
+  <!-- TASK BAR -->
+  <div class="task-bar">
+    <span class="task-label">Current Task</span>
+    <span id="task-text">Initializing…</span>
+    <span class="iteration-badge" id="iter-badge">CYCLE 01</span>
+  </div>
+
+  <!-- ORBITAL SVG -->
+  <div class="canvas-wrap">
+    <svg class="orbit" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg">
+
+      <!-- orbit ring -->
+      <circle class="orbit-ring" cx="350" cy="190" r="128"/>
+
+      <!-- arc base lines -->
+      <!-- center to top (planner) -->
+      <line class="arc-base" x1="350" y1="190" x2="350" y2="62"/>
+      <!-- center to right (tools) -->
+      <line class="arc-base" x1="350" y1="190" x2="478" y2="190"/>
+      <!-- center to bottom (output) -->
+      <line class="arc-base" x1="350" y1="190" x2="350" y2="318"/>
+      <!-- center to left (memory) -->
+      <line class="arc-base" x1="350" y1="190" x2="222" y2="190"/>
+
+      <!-- arc signals -->
+      <line id="arc-planner" class="arc-signal planner" x1="350" y1="190" x2="350" y2="62"/>
+      <line id="arc-tools"   class="arc-signal tools"   x1="350" y1="190" x2="478" y2="190"/>
+      <line id="arc-memory"  class="arc-signal memory"  x1="350" y1="190" x2="222" y2="190"/>
+      <line id="arc-output"  class="arc-signal output"  x1="350" y1="190" x2="350" y2="318"/>
+
+      <!-- rotating halo -->
+      <circle class="halo" cx="350" cy="190" r="145"/>
+
+      <!-- AGENT CENTER -->
+      <circle class="agent-outer" cx="350" cy="190" r="56"/>
+      <circle class="agent-mid"   cx="350" cy="190" r="46"/>
+      <circle class="agent-core"  cx="350" cy="190" r="38"/>
+      <text class="agent-label" x="350" y="185">AGENT</text>
+      <text class="agent-sub"   x="350" y="200">REASONING</text>
+
+      <!-- PLANNER (top) -->
+      <g id="sat-planner">
+        <rect class="sat-bg planner" x="294" y="18" width="112" height="64" rx="4"/>
+        <text class="sat-icon" x="350" y="44">🧠</text>
+        <text class="sat-name" x="350" y="62">PLANNER</text>
+        <text class="sat-role" x="350" y="75">task decomposition</text>
+      </g>
+
+      <!-- TOOLS (right) -->
+      <g id="sat-tools">
+        <rect class="sat-bg tools" x="484" y="158" width="112" height="64" rx="4"/>
+        <text class="sat-icon" x="540" y="184">⚡</text>
+        <text class="sat-name" x="540" y="202">TOOLS</text>
+        <text class="sat-role" x="540" y="215">execution layer</text>
+      </g>
+
+      <!-- OUTPUT (bottom) -->
+      <g id="sat-output">
+        <rect class="sat-bg output" x="294" y="298" width="112" height="64" rx="4"/>
+        <text class="sat-icon" x="350" y="324">📤</text>
+        <text class="sat-name" x="350" y="342">OUTPUT</text>
+        <text class="sat-role" x="350" y="355">result delivery</text>
+      </g>
+
+      <!-- MEMORY (left) -->
+      <g id="sat-memory">
+        <rect class="sat-bg memory" x="104" y="158" width="112" height="64" rx="4"/>
+        <text class="sat-icon" x="160" y="184">💾</text>
+        <text class="sat-name" x="160" y="202">MEMORY</text>
+        <text class="sat-role" x="160" y="215">context store</text>
+      </g>
+
+    </svg>
+  </div>
+
+  <!-- REASONING FEED -->
+  <div class="feed-wrap">
+    <div class="feed-header">
+      <span class="feed-title">Agent Reasoning Feed</span>
+      <span id="feed-phase">● Idle</span>
+    </div>
+    <div class="feed-body" id="feed-body"></div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>Designed by <b>Ramon Cortez</b> · AI Architect</span>
+    <span>San Diego, CA</span>
+    <span class="live-indicator"><span class="pulse-ring" style="width:8px;height:8px;"></span>Simulated Loop</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const tasks = [
+    {
+      name: "Real Estate: qualify inbound leads",
+      steps: [
+        { phase:"planner", text:"Plan: score 14 new form submissions by budget, timeline, and location match. Prioritize top 3 for agent follow-up." },
+        { phase:"tools",   text:"CRM query complete. 3 leads flagged high-intent: pre-approved budgets $600K–$900K, looking within 60 days." },
+        { phase:"memory",  text:"Cross-referencing against prior lost deals. Similar profile last quarter converted at 38% — strong signal." },
+        { phase:"output",  text:"Lead report sent to agent inbox: 3 hot, 6 warm, 5 nurture. Follow-up scripts drafted per segment." }
+      ]
+    },
+    {
+      name: "Marketing Agency: campaign performance audit",
+      steps: [
+        { phase:"planner", text:"Client campaign ends Friday. Plan: pull ad spend, CTR, conversions, and compare against KPI targets." },
+        { phase:"tools",   text:"Meta Ads API queried. ROAS: 3.2x (target 4x). CTR strong at 2.8% but checkout drop-off is 61%." },
+        { phase:"memory",  text:"Storing benchmark: checkout drop-off is up from 48% last month. Landing page change on the 12th may be cause." },
+        { phase:"output",  text:"Client report ready: ROAS below target, root cause identified. Recommended fix: revert landing page variant B." }
+      ]
+    },
+    {
+      name: "Sales Team: draft outreach sequence",
+      steps: [
+        { phase:"planner", text:"New ICP list uploaded: 40 e-commerce founders, $2M–$10M ARR. Plan: write 3-touch email sequence per persona." },
+        { phase:"tools",   text:"Generating personalized openers using company name, recent funding, and LinkedIn activity signals." },
+        { phase:"memory",  text:"Retrieving top-performing subject lines from last quarter. 'Quick question about [Company]' at 42% open rate." },
+        { phase:"output",  text:"Sequence ready for 40 contacts: Day 1 intro, Day 4 value hook, Day 9 soft CTA. Loaded into outreach tool." }
+      ]
+    },
+    {
+      name: "E-commerce: recover abandoned carts",
+      steps: [
+        { phase:"planner", text:"324 carts abandoned in last 48hrs. Plan: segment by cart value, identify high-value targets, trigger recovery flow." },
+        { phase:"tools",   text:"Segmentation done. 87 carts over $150 — priority tier. Average items left: 2.3. Top category: outerwear." },
+        { phase:"memory",  text:"Last recovery campaign on outerwear: 22% recapture rate with a 10% discount offer. Using same playbook." },
+        { phase:"output",  text:"Recovery emails triggered for 87 high-value carts. SMS sent for 34 opted-in. Est. revenue recovery: $4,200." }
+      ]
+    },
+    {
+      name: "Healthcare: patient follow-up automation",
+      steps: [
+        { phase:"planner", text:"18 patients overdue for follow-up after last visit. Plan: draft personalized outreach, flag high-risk profiles." },
+        { phase:"tools",   text:"EHR data accessed. 4 patients flagged high-priority: chronic condition management overdue by 30+ days." },
+        { phase:"memory",  text:"Storing outreach history — 3 of 4 high-priority patients previously responded to SMS over email." },
+        { phase:"output",  text:"Follow-up queue ready: 4 high-priority via SMS, 14 standard via email. Compliance log updated automatically." }
+      ]
+    },
+    {
+      name: "Financial Services: weekly client briefing",
+      steps: [
+        { phase:"planner", text:"Monday briefing for 12 wealth management clients. Plan: pull portfolio performance, market moves, action items." },
+        { phase:"tools",   text:"Portfolio API queried. Avg week: +1.4%. 3 clients below threshold — rebalancing opportunity flagged." },
+        { phase:"memory",  text:"Comparing to prior 4 weeks. Client #7 has been below threshold 3 consecutive weeks — escalate to advisor." },
+        { phase:"output",  text:"12 personalized briefings generated and queued. Advisor alert sent for Client #7. Rebalancing proposals attached." }
+      ]
+    }
+  ];
+
+  const arcEls = {
+    planner: document.getElementById('arc-planner'),
+    tools:   document.getElementById('arc-tools'),
+    memory:  document.getElementById('arc-memory'),
+    output:  document.getElementById('arc-output'),
+  };
+  const satBgs = {
+    planner: document.querySelector('#sat-planner .sat-bg'),
+    tools:   document.querySelector('#sat-tools .sat-bg'),
+    memory:  document.querySelector('#sat-memory .sat-bg'),
+    output:  document.querySelector('#sat-output .sat-bg'),
+  };
+
+  const taskText   = document.getElementById('task-text');
+  const iterBadge  = document.getElementById('iter-badge');
+  const feedBody   = document.getElementById('feed-body');
+  const feedPhase  = document.getElementById('feed-phase');
+
+  const phaseColors = {
+    planner: 'var(--planner)',
+    tools:   'var(--tools)',
+    memory:  'var(--memory)',
+    output:  'var(--output)',
+  };
+  const phaseLabels = {
+    planner: 'Planner',
+    tools:   'Tools',
+    memory:  'Memory',
+    output:  'Output',
+  };
+
+  let cycle = 0;
+
+  // Timing constants — tweak these to adjust the whole feel
+  const T = {
+    ARC_FADE_IN:   180,   // ms — arc fades in
+    ARC_HOLD:      950,   // ms — arc stays fully lit
+    ARC_FADE_OUT:  300,   // ms — arc fades out
+    FEED_DELAY:    160,   // ms after arc fires before feed row appears
+    STEP_GAP:      320,   // ms between steps (after arc fully fades)
+    TASK_GAP:     2000,   // ms idle pause between tasks
+    TASK_FADE:     220,   // ms for task label crossfade
+  };
+
+  // Apply smooth CSS transitions to all arc lines once
+  Object.values(arcEls).forEach(el => {
+    el.style.transition = `opacity ${T.ARC_FADE_IN}ms ease-in`;
+  });
+
+  function flashArc(phase) {
+    return new Promise(resolve => {
+      const el = arcEls[phase];
+      const bg = satBgs[phase];
+
+      // Fade in
+      el.style.transition = `opacity ${T.ARC_FADE_IN}ms ease-in`;
+      el.style.opacity = '1';
+      bg.classList.add('active');
+      feedPhase.textContent = '● ' + phaseLabels[phase].toUpperCase();
+      feedPhase.style.color = phaseColors[phase];
+
+      // Hold, then fade out
+      setTimeout(() => {
+        el.style.transition = `opacity ${T.ARC_FADE_OUT}ms ease-out`;
+        el.style.opacity = '0';
+        bg.classList.remove('active');
+        // Resolve after fade-out completes
+        setTimeout(resolve, T.ARC_FADE_OUT);
+      }, T.ARC_HOLD);
+    });
+  }
+
+  function addFeedRow(phase, text) {
+    const MAX = 12;
+    const row = document.createElement('div');
+    row.className = 'feed-row';
+    row.innerHTML =
+      '<span class="feed-dot ' + phase + '"></span>' +
+      '<div class="feed-content">' +
+        '<div class="feed-node ' + phase + '">' + phaseLabels[phase] + '</div>' +
+        '<div class="feed-text">' + text + '</div>' +
+      '</div>';
+    feedBody.insertBefore(row, feedBody.firstChild);
+    while (feedBody.children.length > MAX) feedBody.removeChild(feedBody.lastChild);
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function runTask(task, cycleNum) {
+    // Crossfade task label
+    taskText.style.transition = `opacity ${T.TASK_FADE}ms ease`;
+    taskText.style.opacity = '0';
+    await sleep(T.TASK_FADE);
+    taskText.textContent = '"' + task.name + '"';
+    taskText.style.opacity = '1';
+    iterBadge.textContent = 'CYCLE ' + String(cycleNum).padStart(2, '0');
+
+    await sleep(300); // brief breath before first step
+
+    for (const step of task.steps) {
+      // Fire arc — feed row appears shortly after arc lights up
+      const arcPromise = flashArc(step.phase);
+      await sleep(T.FEED_DELAY);
+      addFeedRow(step.phase, step.text);
+
+      // Wait for arc to fully complete (hold + fade out)
+      await arcPromise;
+      await sleep(T.STEP_GAP); // gap before next step
+    }
+
+    feedPhase.textContent = '● Idle';
+    feedPhase.style.color = 'var(--mint)';
+    await sleep(T.TASK_GAP);
+  }
+
+  async function loop() {
+    await sleep(500);
+    while (true) {
+      const task = tasks[cycle % tasks.length];
+      cycle++;
+      await runTask(task, cycle);
+    }
+  }
+
+  loop();
+})();
+</script>
+</body>
+</html>
